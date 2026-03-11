@@ -131,3 +131,19 @@ def logout():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.post("/admin/trigger-scheduler")
+def trigger_scheduler(request: Request):
+    """Manually trigger the send scheduling + executor for testing."""
+    from app.auth import auth_redirect_if_needed
+    redirect = auth_redirect_if_needed(request)
+    if redirect:
+        return redirect
+
+    logger.info("Manually triggering scheduler...")
+    schedule_daily_sends()
+    logger.info("Scheduling done, running executor...")
+    execute_pending_sends()
+    logger.info("Executor done.")
+    return {"status": "ok", "message": "Scheduler and executor triggered"}
