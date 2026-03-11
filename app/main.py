@@ -38,8 +38,11 @@ def run_migrations():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Starting lifespan...")
+
     # Run database migrations
     run_migrations()
+    logger.info("Migrations done, setting up scheduler...")
 
     # Schedule daily sends at 8:55 AM ET
     scheduler.add_job(
@@ -68,6 +71,7 @@ async def lifespan(app: FastAPI):
 
     scheduler.start()
     logger.info("APScheduler started with 3 jobs")
+    logger.info("Lifespan startup complete")
     yield
     scheduler.shutdown()
     logger.info("APScheduler shut down")
