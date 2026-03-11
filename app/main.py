@@ -142,9 +142,27 @@ def trigger_scheduler(request: Request, key: str = ""):
         if redirect:
             return {"error": "Not authenticated. Pass ?key=APP_SECRET_KEY"}
 
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from app.database import SessionLocal
+    from app.models import Send
+
     logger.info("Manually triggering scheduler...")
     schedule_daily_sends()
-    logger.info("Scheduling done, running executor...")
+
+    # For testing: override all scheduled sends to fire NOW
+    db = SessionLocal()
+    try:
+        now = datetime.now(ZoneInfo("America/Toronto"))
+        pending = db.query(Send).filter(Send.status == "scheduled").all()
+        for s in pending:
+            s.scheduled_time = now
+        db.commit()
+        logger.info(f"Overrode {len(pending)} sends to fire now")
+    finally:
+        db.close()
+
+    logger.info("Running executor...")
     execute_pending_sends()
     logger.info("Executor done.")
-    return {"status": "ok", "message": "Scheduler and executor triggered"}
+    return {"status": "ok", "message": f"Scheduler triggered, {len(pending)} sends queued and executor run"}
