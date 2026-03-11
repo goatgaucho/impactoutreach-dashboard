@@ -134,12 +134,13 @@ def health():
 
 
 @app.api_route("/admin/trigger-scheduler", methods=["GET", "POST"])
-def trigger_scheduler(request: Request):
+def trigger_scheduler(request: Request, key: str = ""):
     """Manually trigger the send scheduling + executor for testing."""
-    from app.auth import auth_redirect_if_needed
-    redirect = auth_redirect_if_needed(request)
-    if redirect:
-        return redirect
+    if key != settings.APP_SECRET_KEY:
+        from app.auth import auth_redirect_if_needed
+        redirect = auth_redirect_if_needed(request)
+        if redirect:
+            return {"error": "Not authenticated. Pass ?key=APP_SECRET_KEY"}
 
     logger.info("Manually triggering scheduler...")
     schedule_daily_sends()
