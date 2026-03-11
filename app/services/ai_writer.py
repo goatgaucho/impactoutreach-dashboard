@@ -1,13 +1,13 @@
-import anthropic
 import logging
+from openai import OpenAI
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
-MODEL = "claude-sonnet-4-20250514"
+MODEL = "gpt-4o"
 
 
 def generate_email_body(
@@ -22,7 +22,7 @@ def generate_email_body(
     tone_instructions: str | None = None,
     display_name: str = "",
 ) -> str:
-    """Generate a personalized constituent letter using Claude."""
+    """Generate a personalized constituent letter using GPT-4o."""
     concern_line = ""
     if personal_concern:
         concern_line = f"\nThe constituent's personal concern: {personal_concern}\n"
@@ -45,14 +45,16 @@ Sign the letter as: {display_name}, {city}
 
 Do not include any headers, subject lines, or metadata. Just the letter body."""
 
-    response = client.messages.create(
+    response = client.chat.completions.create(
         model=MODEL,
         max_tokens=1024,
-        messages=[{"role": "user", "content": "Write the letter now."}],
-        system=system_prompt,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": "Write the letter now."},
+        ],
     )
 
-    body = response.content[0].text.strip()
+    body = response.choices[0].message.content.strip()
     logger.info(f"Generated email body for {first_name} {last_initial}. ({len(body)} chars)")
     return body
 
@@ -62,15 +64,17 @@ def generate_subject_line(
     recipient_title: str,
     campaign_name: str,
 ) -> str:
-    """Generate a short, natural email subject line using Claude."""
+    """Generate a short, natural email subject line using GPT-4o."""
     prompt = f"""Write a short, natural email subject line (under 60 chars) for a constituent letter to {recipient_title} {recipient_name} about {campaign_name}. Make it sound personal, not like a form letter. Just output the subject line, nothing else."""
 
-    response = client.messages.create(
+    response = client.chat.completions.create(
         model=MODEL,
         max_tokens=100,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "user", "content": prompt},
+        ],
     )
 
-    subject = response.content[0].text.strip().strip('"').strip("'")
+    subject = response.choices[0].message.content.strip().strip('"').strip("'")
     logger.info(f"Generated subject: {subject}")
     return subject
