@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% block title %}{{ campaign.name }} - ImpactOutreach Admin{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="/" class="text-indigo-600 text-sm font-medium hover:text-indigo-700 flex items-center gap-1 mb-4">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Back to Dashboard
+    </a>
+
+    <div class="flex items-start justify-between">
+        <div>
+            <div class="flex items-center gap-3 mb-1">
+                <h1 class="text-2xl font-bold text-slate-950 tracking-tight">{{ campaign.name }}</h1>
+                <span class="badge badge-{{ campaign.status }}">{{ campaign.status | capitalize }}</span>
+            </div>
+            <p class="text-slate-500 text-sm">Created {{ campaign.created_at.strftime('%b %d, %Y') if campaign.created_at else '' }}{% if campaign.start_date %} &middot; Starts {{ campaign.start_date }}{% endif %}</p>
+        </div>
+        <div class="flex gap-2">
+            {% if campaign.status == 'draft' or campaign.status == 'paused' %}
+            <form method="POST" action="/campaigns/{{ campaign.id }}/activate" style="display:inline">
+                <button type="submit" class="btn-primary">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                    </svg>
+                    Activate
+                </button>
+            </form>
+            {% endif %}
+            {% if campaign.status == 'active' %}
+            <form method="POST" action="/campaigns/{{ campaign.id }}/pause" style="display:inline">
+                <button type="submit" class="btn-secondary">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 9v6m4-6v6"/>
+                    </svg>
+                    Pause
+                </button>
+            </form>
+            {% endif %}
+            {% if campaign.status != 'complete' %}
+            <form method="POST" action="/campaigns/{{ campaign.id }}/complete" style="display:inline">
+                <button type="submit" class="btn-secondary">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Complete
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Stats -->
+{% if stats %}
+<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-8">
+    <div class="stat-card">
+        <div class="text-2xl font-bold text-slate-950">{{ stats.total_constituents }}</div>
+        <div class="text-xs text-slate-400 font-medium mt-0.5">Constituents</div>
+    </div>
+    <div class="stat-card">
+        <div class="text-2xl font-bold text-slate-950">{{ stats.total_sends }}</div>
+        <div class="text-xs text-slate-400 font-medium mt-0.5">Total Sends</div>
+    </div>
+    <div class="stat-card">
+        <div class="text-2xl font-bold text-green-600">{{ stats.sent_count }}</div>
+        <div class="text-xs text-slate-400 font-medium mt-0.5">Sent</div>
+    </div>
+    <div class="stat-card">
+        <div class="text-2xl font-bold text-slate-500">{{ stats.pending_count }}</div>
+        <div class="text-xs text-slate-400 font-medium mt-0.5">Pending</div>
+    </div>
+    <div class="stat-card">
+        <div class="text-2xl font-bold text-red-500">{{ stats.bounced_count }}</div>
+        <div class="text-xs text-slate-400 font-medium mt-0.5">Bounced</div>
+    </div>
+    <div class="stat-card">
+        <div class="text-2xl font-bold text-blue-600">{{ stats.replied_count }}</div>
+        <div class="text-xs text-slate-400 font-medium mt-0.5">Replied</div>
+    </div>
+    <div class="stat-card">
+        <div class="text-2xl font-bold text-indigo-600">{{ stats.emails_today }}</div>
+        <div class="text-xs text-slate-400 font-medium mt-0.5">Today</div>
+    </div>
+</div>
+{% endif %}
+
+<div class="grid lg:grid-cols-3 gap-6">
+    <!-- Left column: Campaign info + Constituents -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Issue Brief -->
+        <div class="card p-6">
+            <h2 class="text-base font-semibold text-slate-950 mb-3">Issue Brief</h2>
+            <p class="text-sm text-slate-600 whitespace-pre-line leading-relaxed">{{ campaign.issue_brief }}</p>
+            {% if campaign.tone_instructions %}
+            <div class="mt-4 pt-4 border-t border-indigo-50">
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Tone Instructions</h3>
+                <p class="text-sm text-slate-500">{{ campaign.tone_instructions }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Stakeholders -->
+        {% if campaign.stakeholders %}
+        <div class="card p-6">
+            <h2 class="text-base font-semibold text-slate-950 mb-4">Stakeholders</h2>
+            <div class="space-y-3">
+                {% for sh in campaign.stakeholders %}
+                <div class="flex items-center justify-between p-3 rounded-xl bg-indigo-50/40 border border-indigo-100/60">
+                    <div>
+                        <div class="text-sm font-semibold text-slate-950">{{ sh.name }}</div>
+                        <div class="text-xs text-slate-500">{{ sh.title }}{% if sh.riding %} &middot; {{ sh.riding }}{% endif %}</div>
+                    </div>
+                    <div class="text-xs text-slate-400 font-mono">{{ sh.email }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Constituents -->
+        <div class="card p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-base font-semibold text-slate-950">Constituents ({{ constituents | length }})</h2>
+                <form method="POST" action="/campaigns/{{ campaign.id }}/upload-csv" enctype="multipart/form-data" class="flex items-center gap-2">
+                    <input type="file" name="file" accept=".csv" required
+                        class="text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 file:cursor-pointer file:transition-colors">
+                    <button type="submit" class="btn-secondary text-xs" style="padding: 0.375rem 0.75rem;">Upload CSV</button>
+                </form>
+            </div>
+
+            {% if constituents %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-indigo-50">
+                            <th class="text-left py-2.5 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Name</th>
+                            <th class="text-left py-2.5 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">City</th>
+                            <th class="text-left py-2.5 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Postal Code</th>
+                            <th class="text-left py-2.5 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Riding</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in constituents %}
+                        <tr class="table-row border-b border-indigo-50/60">
+                            <td class="py-2.5 px-3 font-medium text-slate-950">{{ c.first_name }} {{ c.last_name }}</td>
+                            <td class="py-2.5 px-3 text-slate-600">{{ c.city }}</td>
+                            <td class="py-2.5 px-3 text-slate-600 font-mono text-xs">{{ c.postal_code }}</td>
+                            <td class="py-2.5 px-3 text-slate-500">{{ c.riding or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <p class="text-slate-400 text-sm">No constituents yet. Upload a CSV to get started.</p>
+                <p class="text-slate-300 text-xs mt-1">CSV columns: first_name, last_name, email, city, postal_code, riding (optional), personal_concern (optional)</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Recent Sends -->
+        <div class="card p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-base font-semibold text-slate-950">Recent Sends</h2>
+                <a href="/campaigns/{{ campaign.id }}/sends" class="text-indigo-600 text-sm font-medium hover:text-indigo-700">View All</a>
+            </div>
+
+            {% if sends %}
+            <div class="space-y-3">
+                {% for s in sends[:10] %}
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50/60 border border-slate-100">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-slate-950 truncate">{{ s.from_display_name }} &rarr; {{ s.recipient_name }}</div>
+                        <div class="text-xs text-slate-400 mt-0.5">
+                            {% if s.subject %}{{ s.subject }}{% else %}{{ s.recipient_email }}{% endif %}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 ml-4">
+                        {% if s.scheduled_time %}
+                        <span class="text-xs text-slate-400">{{ s.scheduled_time.strftime('%b %d %I:%M %p') if s.scheduled_time else '' }}</span>
+                        {% endif %}
+                        <span class="badge badge-{{ s.status }}">{{ s.status }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-slate-400 text-sm text-center py-6">No sends yet. Activate the campaign to begin scheduling.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right column: Replies -->
+    <div class="space-y-6">
+        <div class="card p-6">
+            <h2 class="text-base font-semibold text-slate-950 mb-4">Replies ({{ replies | length }})</h2>
+
+            {% if replies %}
+            <div class="space-y-4">
+                {% for r in replies %}
+                <div class="p-4 rounded-xl border border-blue-100 bg-blue-50/30">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-semibold text-slate-950">{{ r.from_email }}</span>
+                        <span class="text-xs text-slate-400">{{ r.received_at.strftime('%b %d, %H:%M') if r.received_at else '' }}</span>
+                    </div>
+                    {% if r.subject %}
+                    <div class="text-xs font-medium text-slate-600 mb-1.5">Re: {{ r.subject }}</div>
+                    {% endif %}
+                    <p class="text-sm text-slate-600 whitespace-pre-line leading-relaxed" style="max-height: 150px; overflow-y: auto;">{{ r.body[:500] if r.body else 'No body' }}{% if r.body and r.body|length > 500 %}...{% endif %}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-50 rounded-xl mb-3">
+                    <svg class="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                    </svg>
+                </div>
+                <p class="text-slate-400 text-sm">No replies yet</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Campaign Settings -->
+        <div class="card p-6">
+            <h2 class="text-base font-semibold text-slate-950 mb-4">Settings</h2>
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Emails per day</span>
+                    <span class="font-semibold text-slate-950">{{ campaign.emails_per_day }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Status</span>
+                    <span class="badge badge-{{ campaign.status }}">{{ campaign.status | capitalize }}</span>
+                </div>
+                {% if campaign.start_date %}
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Start date</span>
+                    <span class="font-semibold text-slate-950">{{ campaign.start_date }}</span>
+                </div>
+                {% endif %}
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Stakeholders</span>
+                    <span class="font-semibold text-slate-950">{{ campaign.stakeholders | length }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - ImpactOutreach Admin{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-8">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-950 tracking-tight">Campaigns</h1>
+        <p class="text-slate-500 text-sm mt-1">Manage your advocacy campaigns</p>
+    </div>
+    <a href="/campaigns/new" class="btn-primary">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        New Campaign
+    </a>
+</div>
+
+{% if not campaigns %}
+<div class="card card-lg p-16 text-center">
+    <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-50 rounded-2xl mb-4">
+        <svg class="w-8 h-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+    </div>
+    <h3 class="text-lg font-semibold text-slate-950 mb-2">No campaigns yet</h3>
+    <p class="text-slate-500 text-sm mb-6">Create your first campaign to start sending constituent letters.</p>
+    <a href="/campaigns/new" class="btn-primary">Create Campaign</a>
+</div>
+{% else %}
+
+<div class="grid gap-4">
+    {% for item in campaigns %}
+    <a href="/campaigns/{{ item.campaign.id }}" class="card p-6 block hover:shadow-md transition-all duration-200 hover:-translate-y-0.5" style="text-decoration: none;">
+        <div class="flex items-start justify-between">
+            <div class="flex-1">
+                <div class="flex items-center gap-3 mb-2">
+                    <h2 class="text-lg font-semibold text-slate-950">{{ item.campaign.name }}</h2>
+                    <span class="badge badge-{{ item.campaign.status }}">{{ item.campaign.status | capitalize }}</span>
+                </div>
+                <p class="text-slate-500 text-sm line-clamp-2">{{ item.campaign.issue_brief[:120] }}{% if item.campaign.issue_brief | length > 120 %}...{% endif %}</p>
+                {% if item.campaign.start_date %}
+                <p class="text-slate-400 text-xs mt-2">Started {{ item.campaign.start_date }}</p>
+                {% endif %}
+            </div>
+            <div class="flex gap-6 ml-8 text-center">
+                <div>
+                    <div class="text-2xl font-bold text-slate-950">{{ item.constituent_count }}</div>
+                    <div class="text-xs text-slate-400 font-medium">Constituents</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-indigo-600">{{ item.sent_count }}</div>
+                    <div class="text-xs text-slate-400 font-medium">Sent</div>
+                </div>
+                <div>
+                    <div class="text-2xl font-bold" style="color: #2563eb;">{{ item.reply_count }}</div>
+                    <div class="text-xs text-slate-400 font-medium">Replies</div>
+                </div>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
