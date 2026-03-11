@@ -133,7 +133,7 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/admin/trigger-scheduler")
+@app.api_route("/admin/trigger-scheduler", methods=["GET", "POST"])
 def trigger_scheduler(request: Request):
     """Manually trigger the send scheduling + executor for testing."""
     from app.auth import auth_redirect_if_needed
