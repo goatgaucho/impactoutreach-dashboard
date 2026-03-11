@@ -1,7 +1,7 @@
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -13,10 +13,10 @@ router = APIRouter()
 
 
 @router.get("/campaigns/{campaign_id}/stats")
-def campaign_stats(campaign_id: UUID, db: Session = Depends(get_db)):
+def campaign_stats(campaign_id: UUID, auth: dict = Depends(require_auth), db: Session = Depends(get_db)):
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
     if not campaign:
-        return {"error": "Campaign not found"}
+        raise HTTPException(status_code=404, detail="Campaign not found")
 
     today = date.today()
 

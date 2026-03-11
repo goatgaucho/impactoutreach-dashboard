@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import random
 import unicodedata
@@ -185,7 +184,46 @@ def schedule_daily_sends():
         db.close()
 
 
-async def execute_pending_sends():
+def _send_email_sync(
+    from_address: str,
+    from_display_name: str,
+    to_email: str,
+    subject: str,
+    body: str,
+    riding: str,
+) -> dict:
+    """Synchronous wrapper around the async send_email function."""
+    import httpx
+
+    footer = f"\n\n---\nThis message was sent via ImpactOutreach on behalf of a constituent of {riding}. To respond to this constituent, reply directly to this email."
+    full_body = body + footer
+
+    url = f"https://api.mailgun.net/v3/{settings.MAILGUN_DOMAIN}/messages"
+    data = {
+        "from": f'"{from_display_name}" <{from_address}>',
+        "to": to_email,
+        "subject": subject,
+        "text": full_body,
+        "h:Reply-To": from_address,
+    }
+
+    response = httpx.post(
+        url,
+        auth=("api", settings.MAILGUN_API_KEY),
+        data=data,
+        timeout=30.0,
+    )
+
+    if response.status_code == 200:
+        result = response.json()
+        logger.info(f"Email sent successfully: {result.get('id')}")
+        return result
+    else:
+        logger.error(f"Mailgun error {response.status_code}: {response.text}")
+        raise Exception(f"Mailgun API error {response.status_code}: {response.text}")
+
+
+def execute_pending_sends():
     """Every 5 min - execute scheduled sends that are due."""
     logger.info("Running send executor...")
     db: Session = SessionLocal()
@@ -243,8 +281,8 @@ async def execute_pending_sends():
                 send_record.subject = subject
                 send_record.body = body
 
-                # Send via Mailgun
-                result = await send_email(
+                # Send via Mailgun (synchronous)
+                result = _send_email_sync(
                     from_address=send_record.from_address,
                     from_display_name=send_record.from_display_name,
                     to_email=send_record.recipient_email,
@@ -262,12 +300,13 @@ async def execute_pending_sends():
 
                 # Random delay 30-90s between sends
                 delay = random.randint(30, 90)
-                await asyncio.sleep(delay)
+                import time as _time
+                _time.sleep(delay)
 
-            except Exception:
+            except Exception as e:
                 logger.exception(f"Failed to send email {send_record.id}")
                 send_record.status = "failed"
-                send_record.error_message = str(Exception)
+                send_record.error_message = str(e)
                 db.commit()
 
     except Exception:

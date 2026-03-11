@@ -22,12 +22,13 @@ def verify_session_token(token: str) -> dict | None:
 
 
 def require_auth(request: Request):
+    """For use in API routes - raises 401 if not authenticated."""
     token = request.cookies.get(SESSION_COOKIE)
     if not token:
-        raise HTTPException(status_code=303, headers={"Location": "/login"})
+        raise HTTPException(status_code=401, detail="Not authenticated")
     data = verify_session_token(token)
     if not data:
-        raise HTTPException(status_code=303, headers={"Location": "/login"})
+        raise HTTPException(status_code=401, detail="Session expired")
     return data
 
 
