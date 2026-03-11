@@ -20,8 +20,24 @@ settings = get_settings()
 scheduler = AsyncIOScheduler()
 
 
+def run_migrations():
+    """Run Alembic migrations on startup."""
+    from alembic.config import Config
+    from alembic import command
+    import os
+
+    alembic_cfg = Config(os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini"))
+    alembic_cfg.set_main_option("script_location", os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic"))
+    alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+    command.upgrade(alembic_cfg, "head")
+    logger.info("Database migrations complete")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Run database migrations
+    run_migrations()
+
     # Schedule daily sends at 8:55 AM ET
     scheduler.add_job(
         schedule_daily_sends,
