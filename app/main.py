@@ -82,6 +82,13 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 templates = Jinja2Templates(directory="app/templates")
 
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception(f"Unhandled error on {request.url.path}: {exc}")
+    from fastapi.responses import PlainTextResponse
+    return PlainTextResponse(f"Internal Server Error: {exc}", status_code=500)
+
 # Include routers
 app.include_router(dashboard.router)
 app.include_router(constituents.router)
