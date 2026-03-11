@@ -22,15 +22,18 @@ scheduler = AsyncIOScheduler()
 
 def run_migrations():
     """Run Alembic migrations on startup."""
-    from alembic.config import Config
-    from alembic import command
-    import os
+    try:
+        from alembic.config import Config
+        from alembic import command
+        import os
 
-    alembic_cfg = Config(os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini"))
-    alembic_cfg.set_main_option("script_location", os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic"))
-    alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
-    command.upgrade(alembic_cfg, "head")
-    logger.info("Database migrations complete")
+        alembic_cfg = Config(os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini"))
+        alembic_cfg.set_main_option("script_location", os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic"))
+        alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migrations complete")
+    except Exception:
+        logger.exception("Failed to run migrations")
 
 
 @asynccontextmanager
@@ -112,3 +115,8 @@ def logout():
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(SESSION_COOKIE)
     return response
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
