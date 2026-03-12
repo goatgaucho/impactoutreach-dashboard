@@ -155,6 +155,63 @@ def campaign_detail(request: Request, campaign_id: UUID, db: Session = Depends(g
     })
 
 
+@router.get("/campaigns/{campaign_id}/edit", response_class=HTMLResponse)
+def campaign_edit_form(request: Request, campaign_id: UUID, db: Session = Depends(get_db)):
+    redirect = auth_redirect_if_needed(request)
+    if redirect:
+        return redirect
+
+    campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+    if not campaign:
+        return RedirectResponse(url="/", status_code=303)
+
+    return templates.TemplateResponse("campaign_edit.html", {
+        "request": request,
+        "campaign": campaign,
+    })
+
+
+@router.post("/campaigns/{campaign_id}/edit")
+def update_campaign(
+    request: Request,
+    campaign_id: UUID,
+    name: str = Form(...),
+    issue_brief: str = Form(...),
+    tone_instructions: str = Form(""),
+    stakeholders_json: str = Form("[]"),
+    emails_per_day: int = Form(10),
+    start_date: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    redirect = auth_redirect_if_needed(request)
+    if redirect:
+        return redirect
+
+    campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+    if not campaign:
+        return RedirectResponse(url="/", status_code=303)
+
+    try:
+        stakeholders = json.loads(stakeholders_json)
+    except json.JSONDecodeError:
+        stakeholders = campaign.stakeholders or []
+
+    campaign.name = name
+    campaign.issue_brief = issue_brief
+    campaign.tone_instructions = tone_instructions or None
+    campaign.stakeholders = stakeholders
+    campaign.emails_per_day = emails_per_day
+
+    if start_date:
+        try:
+            campaign.start_date = date.fromisoformat(start_date)
+        except ValueError:
+            pass
+
+    db.commit()
+    return RedirectResponse(url=f"/campaigns/{campaign_id}", status_code=303)
+
+
 @router.post("/campaigns/{campaign_id}/activate")
 def activate_campaign(request: Request, campaign_id: UUID, db: Session = Depends(get_db)):
     redirect = auth_redirect_if_needed(request)
