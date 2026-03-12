@@ -258,82 +258,140 @@ def execute_pending_sends():
             Send.scheduled_time <= now,
         ).order_by(Send.scheduled_time).limit(5).with_for_update(skip_locked=True).all()
 
+        # Claim all sends atomically by marking as "generating" first
+        send_ids = [s.id for s in sends]
         for send_record in sends:
+            send_record.status = "generating"
+        db.commit()
+
+        if not send_ids:
+            logger.info("No pending sends to process")
+            return
+
+        # Re-load the claimed sends (now safe from race conditions)
+        sends = db.query(Send).filter(Send.id.in_(send_ids)).all()
+
+        # Group sends by constituent to reuse the same email body across stakeholders
+        # A real person would send the same letter to multiple reps
+        by_constituent: dict[str, list[Send]] = {}
+        for send_record in sends:
+            key = f"{send_record.campaign_id}:{send_record.constituent_id}"
+            by_constituent.setdefault(key, []).append(send_record)
+
+        for constituent_key, constituent_sends in by_constituent.items():
             try:
-                send_record.status = "generating"
-                db.commit()
-
-                # Load related data
-                constituent = send_record.constituent
-                campaign = send_record.campaign
-
-                # Determine stakeholder title from campaign stakeholders
-                stakeholder_title = ""
-                for sh in (campaign.stakeholders or []):
-                    if sh.get("email") == send_record.recipient_email:
-                        stakeholder_title = sh.get("title", "")
-                        break
+                first_send = constituent_sends[0]
+                constituent = first_send.constituent
+                campaign = first_send.campaign
 
                 last_initial = constituent.last_name[0] if constituent.last_name else ""
                 riding = constituent.riding or ""
 
-                # Generate email body
+                # Use the first stakeholder's info for generating the body
+                # (body is written generically, greeting gets swapped per recipient)
+                first_stakeholder_title = ""
+                for sh in (campaign.stakeholders or []):
+                    if sh.get("email") == first_send.recipient_email:
+                        first_stakeholder_title = sh.get("title", "")
+                        break
+
+                # Generate ONE email body for this constituent
                 body = generate_email_body(
                     first_name=constituent.first_name,
                     last_initial=last_initial,
                     city=constituent.city,
                     riding=riding,
-                    recipient_name=send_record.recipient_name,
-                    recipient_title=stakeholder_title,
+                    recipient_name=first_send.recipient_name,
+                    recipient_title=first_stakeholder_title,
                     issue_brief=campaign.issue_brief,
                     personal_concern=constituent.personal_concern,
                     tone_instructions=campaign.tone_instructions,
-                    display_name=send_record.from_display_name,
+                    display_name=first_send.from_display_name,
                 )
 
-                # Generate subject
-                subject = generate_subject_line(
-                    recipient_name=send_record.recipient_name,
-                    recipient_title=stakeholder_title,
-                    campaign_name=campaign.name,
-                    constituent_name=send_record.from_display_name,
-                )
+                # Send to each stakeholder, swapping the greeting line
+                for send_record in constituent_sends:
+                    try:
+                        stakeholder_title = ""
+                        for sh in (campaign.stakeholders or []):
+                            if sh.get("email") == send_record.recipient_email:
+                                stakeholder_title = sh.get("title", "")
+                                break
 
-                send_record.subject = subject
-                send_record.body = body
+                        # Swap greeting: replace first recipient name with this one
+                        send_body = body
+                        if len(constituent_sends) > 1 and send_record != first_send:
+                            # Replace the greeting name (e.g. "Dear Minister Smith," -> "Dear Mayor Jones,")
+                            send_body = _swap_greeting(body, first_send.recipient_name, send_record.recipient_name)
 
-                # Send via Mailgun (synchronous)
-                result = _send_email_sync(
-                    from_address=send_record.from_address,
-                    from_display_name=send_record.from_display_name,
-                    to_email=send_record.recipient_email,
-                    subject=subject,
-                    body=body,
-                    riding=riding,
-                )
+                        subject = generate_subject_line(
+                            recipient_name=send_record.recipient_name,
+                            recipient_title=stakeholder_title,
+                            campaign_name=campaign.name,
+                            constituent_name=send_record.from_display_name,
+                        )
 
-                send_record.mailgun_message_id = result.get("id", "")
-                send_record.status = "sent"
-                send_record.sent_at = datetime.now(ET)
-                db.commit()
+                        send_record.subject = subject
+                        send_record.body = send_body
 
-                logger.info(f"Sent email {send_record.id} to {send_record.recipient_email}")
+                        # Send via Mailgun (synchronous)
+                        result = _send_email_sync(
+                            from_address=send_record.from_address,
+                            from_display_name=send_record.from_display_name,
+                            to_email=send_record.recipient_email,
+                            subject=subject,
+                            body=send_body,
+                            riding=riding,
+                        )
 
-                # Random delay 30-90s between sends
-                delay = random.randint(30, 90)
-                import time as _time
-                _time.sleep(delay)
+                        send_record.mailgun_message_id = result.get("id", "")
+                        send_record.status = "sent"
+                        send_record.sent_at = datetime.now(ET)
+                        db.commit()
+
+                        logger.info(f"Sent email {send_record.id} to {send_record.recipient_email}")
+
+                        # Random delay 30-90s between sends
+                        delay = random.randint(30, 90)
+                        import time as _time
+                        _time.sleep(delay)
+
+                    except Exception as e:
+                        logger.exception(f"Failed to send email {send_record.id}")
+                        send_record.status = "failed"
+                        send_record.error_message = str(e)
+                        db.commit()
 
             except Exception as e:
-                logger.exception(f"Failed to send email {send_record.id}")
-                send_record.status = "failed"
-                send_record.error_message = str(e)
+                logger.exception(f"Failed to generate email for constituent group {constituent_key}")
+                for send_record in constituent_sends:
+                    if send_record.status == "generating":
+                        send_record.status = "failed"
+                        send_record.error_message = str(e)
                 db.commit()
 
     except Exception:
         logger.exception("Error in send executor")
     finally:
         db.close()
+
+
+def _swap_greeting(body: str, old_name: str, new_name: str) -> str:
+    """Swap the recipient name in the greeting line of an email body."""
+    # Try common greeting patterns
+    for prefix in ["Dear ", "Hello ", "Hi ", "To "]:
+        old_greeting = f"{prefix}{old_name}"
+        new_greeting = f"{prefix}{new_name}"
+        if old_greeting in body:
+            return body.replace(old_greeting, new_greeting, 1)
+
+    # Fallback: just replace the name if it appears in the first line
+    lines = body.split("\n", 1)
+    if old_name in lines[0]:
+        lines[0] = lines[0].replace(old_name, new_name, 1)
+        return "\n".join(lines)
+
+    return body
 
 
 def daily_summary():
