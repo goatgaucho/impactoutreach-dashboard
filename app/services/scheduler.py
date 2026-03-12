@@ -96,15 +96,10 @@ def schedule_daily_sends():
                 Constituent.consent_given == True,
             ).all()
 
-            new_sends = []
+            # Collect eligible constituent+stakeholder pairs first
+            eligible_pairs = []
             for constituent in constituents:
-                if remaining_slots <= 0:
-                    break
-
                 for stakeholder in stakeholders:
-                    if remaining_slots <= 0:
-                        break
-
                     # Check if this pair already has a send
                     existing = db.query(Send).filter(
                         Send.campaign_id == campaign.id,
@@ -115,30 +110,55 @@ def schedule_daily_sends():
                     if existing:
                         continue
 
-                    from_address, display_name = build_from_address(constituent)
+                    eligible_pairs.append((constituent, stakeholder))
 
-                    # Random time between 9 AM and 9 PM ET
-                    hour = random.randint(9, 20)
-                    minute = random.randint(0, 59)
-                    scheduled_dt = datetime.combine(
-                        today,
-                        time(hour, minute),
-                        tzinfo=ET,
-                    )
+            # Shuffle and take only what we need for today
+            random.shuffle(eligible_pairs)
+            pairs_today = eligible_pairs[:remaining_slots]
+            num_sends = len(pairs_today)
 
-                    send = Send(
-                        campaign_id=campaign.id,
-                        constituent_id=constituent.id,
-                        recipient_name=stakeholder.get("name", ""),
-                        recipient_email=stakeholder["email"],
-                        from_address=from_address,
-                        from_display_name=display_name,
-                        status="scheduled",
-                        scheduled_for=today,
-                        scheduled_time=scheduled_dt,
-                    )
-                    new_sends.append(send)
-                    remaining_slots -= 1
+            # Distribute sends evenly across the 9 AM – 9 PM ET window (12 hours)
+            # with random jitter so they don't land on exact intervals
+            WINDOW_START_HOUR = 9
+            WINDOW_END_HOUR = 21  # 9 PM
+            window_minutes = (WINDOW_END_HOUR - WINDOW_START_HOUR) * 60  # 720 min
+
+            if num_sends > 0:
+                # Divide window into equal slots, then add jitter within each slot
+                slot_size = window_minutes / num_sends
+                send_times = []
+                for i in range(num_sends):
+                    slot_start = int(i * slot_size)
+                    slot_end = int((i + 1) * slot_size)
+                    # Random minute within this slot
+                    chosen_minute = random.randint(slot_start, max(slot_start, slot_end - 1))
+                    send_times.append(chosen_minute)
+            else:
+                send_times = []
+
+            new_sends = []
+            for idx, (constituent, stakeholder) in enumerate(pairs_today):
+                from_address, display_name = build_from_address(constituent)
+
+                minutes_offset = send_times[idx]
+                scheduled_dt = datetime.combine(
+                    today,
+                    time(WINDOW_START_HOUR, 0),
+                    tzinfo=ET,
+                ) + timedelta(minutes=minutes_offset)
+
+                send = Send(
+                    campaign_id=campaign.id,
+                    constituent_id=constituent.id,
+                    recipient_name=stakeholder.get("name", ""),
+                    recipient_email=stakeholder["email"],
+                    from_address=from_address,
+                    from_display_name=display_name,
+                    status="scheduled",
+                    scheduled_for=today,
+                    scheduled_time=scheduled_dt,
+                )
+                new_sends.append(send)
 
             # Enforce 45-min gap: no two sends to same recipient within 45 min
             # Group by recipient, sort by time, adjust if needed
