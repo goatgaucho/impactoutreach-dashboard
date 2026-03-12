@@ -14,56 +14,98 @@ MODEL = "gpt-4o"
 WRITING_STYLES = [
     {
         "formality": "formal",
-        "description": "Write in a formal, polished style. Use complete sentences, proper grammar, and a respectful tone throughout. This person writes like someone comfortable with professional correspondence.",
+        "weight": 5,
+        "description": "Write in a formal, polished style. Use complete sentences and proper grammar. This person is comfortable with professional correspondence.",
     },
     {
         "formality": "conversational",
-        "description": "Write in a warm, conversational style. Use a friendly but earnest tone — like someone writing to a neighbor they respect. Shorter sentences are fine. This person is sincere but not stiff.",
+        "weight": 20,
+        "description": "Write in a warm, conversational style. Friendly but earnest — like someone writing to a neighbor they respect. Shorter sentences. Sincere but not stiff.",
     },
     {
         "formality": "direct",
-        "description": "Write in a direct, no-nonsense style. Get to the point quickly. This person doesn't mince words — they state their concern clearly and expect action. Keep it concise.",
+        "weight": 20,
+        "description": "Write in a direct, no-nonsense style. Get to the point fast. This person doesn't mince words — they state their concern and expect action.",
     },
     {
         "formality": "passionate",
-        "description": "Write with visible passion and emotion. This person deeply cares about this issue and it shows in their word choice. They're not angry, but they are fired up and want to be heard.",
-    },
-    {
-        "formality": "thoughtful",
-        "description": "Write in a measured, thoughtful style. This person has clearly done their research and thinks carefully before writing. They ask good questions and present nuanced arguments.",
+        "weight": 10,
+        "description": "Write with visible passion. This person deeply cares and it shows. They're not angry, but they are fired up and want to be heard.",
     },
     {
         "formality": "casual",
-        "description": "Write in a casual, everyday style. This person doesn't write formal letters often — the language is simple and straightforward, maybe a bit rough around the edges, but genuine and heartfelt.",
+        "weight": 25,
+        "description": "Write in a casual, everyday style. This person doesn't write formal letters — the language is simple, maybe a bit rough around the edges, but genuine. Use contractions, sentence fragments are OK.",
+    },
+    {
+        "formality": "rushed",
+        "weight": 15,
+        "description": "Write like someone who is busy and dashing off a quick email. Short, to the point, not perfectly structured. They care about the issue but aren't spending a lot of time crafting this. A few sentences is fine.",
+    },
+    {
+        "formality": "folksy",
+        "weight": 5,
+        "description": "Write like a small-town person who speaks plainly. Use colloquial language, everyday expressions. This person talks the way they write — no pretense, just straight talk.",
     },
 ]
 
-OPENING_INSTRUCTIONS = [
-    "Start the letter by introducing yourself and your connection to the community.",
-    "Open by referencing the specific issue and why it matters to you personally.",
-    "Begin with a brief mention of your city and what you've noticed locally.",
-    "Start by expressing why you felt compelled to write today.",
-    "Open with a direct statement about what you'd like to see happen.",
-    "Begin by sharing a brief personal anecdote related to this issue.",
-    "Start with a question directed at the recipient about the issue.",
-    "Open by referencing something specific about the recipient's role or recent actions.",
+# Weighted length distribution: ~90% short, ~10% longer
+LENGTH_INSTRUCTIONS = [
+    {"instruction": "Write 3-5 sentences total. One short paragraph. This person keeps it brief.", "weight": 40},
+    {"instruction": "Write 2 very short paragraphs, maybe 4-6 sentences total. Keep it tight.", "weight": 30},
+    {"instruction": "Write 1 paragraph, 3-4 sentences. Very short and to the point.", "weight": 20},
+    {"instruction": "Write 2-3 paragraphs of moderate length. This person had more to say.", "weight": 7},
+    {"instruction": "Write 3 short paragraphs with some specific details.", "weight": 3},
 ]
 
-LENGTH_INSTRUCTIONS = [
-    "Write 2-3 short paragraphs. Keep it brief — this person values brevity.",
-    "Write 3-4 paragraphs of moderate length.",
-    "Write 3 well-developed paragraphs with specific details.",
-    "Write 4 paragraphs — this person has a lot to say on this topic.",
+OPENING_INSTRUCTIONS = [
+    "Start by jumping right into the issue — no preamble.",
+    "Open with why this issue affects you personally.",
+    "Start with a brief mention of your city and what you've noticed.",
+    "Open with a question about the issue.",
+    "Start with a direct statement about what you want to see happen.",
+    "Begin with something you heard or read about this issue recently.",
+    "Just get right to the point — say what you need to say.",
 ]
 
 CLOSING_STYLES = [
-    "End with a forward-looking statement about what you hope to see.",
-    "Close by reiterating your main concern in one sentence.",
-    "End by thanking them for their time and public service.",
-    "Close with a specific ask — what action do you want them to take?",
-    "End on a personal note about why this matters to your family or community.",
-    "Close by expressing confidence that the recipient will do the right thing.",
+    "End with a short line about what you hope to see.",
+    "Close by reiterating your main point in one sentence.",
+    "End with a simple thanks.",
+    "Close with a specific ask — what do you want them to do?",
+    "Just sign off naturally, no big closing statement needed.",
+    "End with why this matters to your family or community.",
 ]
+
+# ~20% of emails should have imperfections (typos, missing caps, etc.)
+POLISH_LEVELS = [
+    {
+        "level": "clean",
+        "weight": 40,
+        "instruction": "",
+    },
+    {
+        "level": "slightly_rough",
+        "weight": 30,
+        "instruction": "Write with slightly imperfect grammar — maybe a run-on sentence, a missing comma, or an awkward phrase. Nothing major, just not perfectly polished. Like a real person who didn't proofread carefully.",
+    },
+    {
+        "level": "messy",
+        "weight": 20,
+        "instruction": "Include 1-2 small typos or spelling errors (e.g., 'teh' instead of 'the', 'goverment' instead of 'government', 'thier' instead of 'their'). Maybe miss a capital letter at the start of a sentence, or use a comma splice. This person typed this out quickly and didn't proofread. Keep the errors subtle and natural — NOT every sentence, just a couple spots.",
+    },
+    {
+        "level": "very_rough",
+        "weight": 10,
+        "instruction": "Write with noticeable imperfections: 2-3 typos or misspellings, inconsistent capitalization (maybe 'i' instead of 'I' once or twice), a sentence fragment, or a missing period. This person is not a strong writer — they're writing from the heart but their grammar isn't perfect. Keep errors realistic, not exaggerated.",
+    },
+]
+
+
+def _weighted_choice(options: list[dict]) -> dict:
+    """Pick a random option using the 'weight' field."""
+    weights = [o["weight"] for o in options]
+    return random.choices(options, weights=weights, k=1)[0]
 
 
 def generate_email_body(
@@ -88,14 +130,19 @@ def generate_email_body(
         tone_line = f"\nCampaign operator instructions for tone and content:\n{tone_instructions}\n"
 
     # Randomly select writing style parameters for this email
-    style = random.choice(WRITING_STYLES)
+    style = _weighted_choice(WRITING_STYLES)
     opening = random.choice(OPENING_INSTRUCTIONS)
-    length = random.choice(LENGTH_INSTRUCTIONS)
+    length = _weighted_choice(LENGTH_INSTRUCTIONS)
     closing = random.choice(CLOSING_STYLES)
+    polish = _weighted_choice(POLISH_LEVELS)
 
-    system_prompt = f"""You are writing a letter from a real constituent to their elected representative.
+    polish_instruction = ""
+    if polish["instruction"]:
+        polish_instruction = f"\nIMPERFECTIONS: {polish['instruction']}\n"
 
-The constituent is: {first_name} {last_initial}., from {city} ({riding}).
+    system_prompt = f"""You are writing an email from a real person to their elected representative.
+
+The person is: {first_name} {last_initial}., from {city} ({riding}).
 They are writing to: {recipient_name}, {recipient_title}.
 
 Issue brief:
@@ -103,34 +150,36 @@ Issue brief:
 {concern_line}{tone_line}
 WRITING STYLE: {style['description']}
 
+LENGTH: {length['instruction']}
+{polish_instruction}
 STRUCTURE:
 - {opening}
-- {length}
 - {closing}
 
 CRITICAL RULES:
-- Do NOT start with "I hope this message finds you well" or any variation of that phrase.
-- Do NOT use generic openings like "I am writing to express my concern" — be specific and natural.
-- This must read like a real person wrote it, not a template. Vary vocabulary, sentence length, and rhythm.
-- Reference the constituent's city naturally but don't force it.
-- The greeting should fit the formality level — "Dear {recipient_name}," or "Hello," or just the name, etc.
+- Do NOT start with "I hope this message finds you well" or any variation.
+- Do NOT use generic openings like "I am writing to express my concern."
+- Do NOT write long, multi-paragraph essays. Most people write SHORT emails.
+- This must read like a real person typed it, not a polished template.
+- The greeting should fit the tone — "Dear {recipient_name}," or "Hello," or "Hi," or just the name, or even no greeting at all.
+- Keep it natural. Real emails are often short, imperfect, and to the point.
 
-Sign the letter as: {display_name}, {city}
+Sign off as: {display_name}, {city}
 
-Do not include any headers, subject lines, or metadata. Just the letter body."""
+Output ONLY the email body. No headers, subject lines, or metadata."""
 
     response = client.chat.completions.create(
         model=MODEL,
-        max_tokens=1024,
-        temperature=1.1,
+        max_tokens=512,
+        temperature=1.2,
         messages=[
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": "Write the letter now."},
+            {"role": "user", "content": "Write the email now."},
         ],
     )
 
     body = response.choices[0].message.content.strip()
-    logger.info(f"Generated email body for {first_name} {last_initial}. (style={style['formality']}, {len(body)} chars)")
+    logger.info(f"Generated email for {first_name} {last_initial}. (style={style['formality']}, polish={polish['level']}, {len(body)} chars)")
     return body
 
 
