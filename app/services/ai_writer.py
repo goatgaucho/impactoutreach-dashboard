@@ -63,18 +63,9 @@ def generate_subject_line(
     recipient_name: str,
     recipient_title: str,
     campaign_name: str,
+    constituent_name: str = "",
 ) -> str:
-    """Generate a short, natural email subject line using GPT-4o."""
-    prompt = f"""Write a short, natural email subject line (under 60 chars) for a constituent letter to {recipient_title} {recipient_name} about {campaign_name}. Make it sound personal, not like a form letter. Just output the subject line, nothing else."""
-
-    response = client.chat.completions.create(
-        model=MODEL,
-        max_tokens=100,
-        messages=[
-            {"role": "user", "content": prompt},
-        ],
-    )
-
-    subject = response.choices[0].message.content.strip().strip('"').strip("'")
+    """Generate a consistent subject line: '<Constituent Name> Feedback for <Campaign Name>'."""
+    subject = f"{constituent_name} Feedback for {campaign_name}"
     logger.info(f"Generated subject: {subject}")
     return subject

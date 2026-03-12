@@ -117,8 +117,8 @@ def schedule_daily_sends():
 
                     from_address, display_name = build_from_address(constituent)
 
-                    # Random time between 9 AM and 4 PM ET
-                    hour = random.randint(9, 15)
+                    # Random time between 9 AM and 9 PM ET
+                    hour = random.randint(9, 20)
                     minute = random.randint(0, 59)
                     scheduled_dt = datetime.combine(
                         today,
@@ -163,8 +163,8 @@ def schedule_daily_sends():
                     ):
                         # Bump by 45 min
                         s.scheduled_time = s.scheduled_time + timedelta(minutes=45)
-                        # Don't go past 4 PM ET
-                        if s.scheduled_time.astimezone(ET).hour >= 16:
+                        # Don't go past 9 PM ET
+                        if s.scheduled_time.astimezone(ET).hour >= 21:
                             s.scheduled_time = None
                             s.status = "pending"
                             break
@@ -236,7 +236,7 @@ def execute_pending_sends():
             Send.status == "scheduled",
             Send.scheduled_for == today,
             Send.scheduled_time <= now,
-        ).order_by(Send.scheduled_time).limit(5).all()
+        ).order_by(Send.scheduled_time).limit(5).with_for_update(skip_locked=True).all()
 
         for send_record in sends:
             try:
@@ -276,6 +276,7 @@ def execute_pending_sends():
                     recipient_name=send_record.recipient_name,
                     recipient_title=stakeholder_title,
                     campaign_name=campaign.name,
+                    constituent_name=send_record.from_display_name,
                 )
 
                 send_record.subject = subject
