@@ -96,25 +96,32 @@ def schedule_daily_sends():
                 Constituent.consent_given == True,
             ).all()
 
-            # Collect eligible constituent+stakeholder pairs first
-            eligible_pairs = []
+            # Collect eligible constituents (those who haven't sent to ALL stakeholders yet)
+            eligible_constituents = []
             for constituent in constituents:
+                unsent_stakeholders = []
                 for stakeholder in stakeholders:
-                    # Check if this pair already has a send
                     existing = db.query(Send).filter(
                         Send.campaign_id == campaign.id,
                         Send.constituent_id == constituent.id,
                         Send.recipient_email == stakeholder["email"],
                     ).first()
+                    if not existing:
+                        unsent_stakeholders.append(stakeholder)
 
-                    if existing:
-                        continue
+                if unsent_stakeholders:
+                    eligible_constituents.append((constituent, unsent_stakeholders))
 
-                    eligible_pairs.append((constituent, stakeholder))
-
-            # Shuffle and take only what we need for today
-            random.shuffle(eligible_pairs)
-            pairs_today = eligible_pairs[:remaining_slots]
+            # Shuffle constituents, then select enough to fill the daily quota
+            # Each constituent sends to ALL their unsent stakeholders as a batch
+            random.shuffle(eligible_constituents)
+            pairs_today = []
+            for constituent, unsent_stakeholders in eligible_constituents:
+                # Check if adding this constituent's sends would exceed the limit
+                if len(pairs_today) + len(unsent_stakeholders) > remaining_slots:
+                    continue
+                for stakeholder in unsent_stakeholders:
+                    pairs_today.append((constituent, stakeholder))
             num_sends = len(pairs_today)
 
             # Distribute sends evenly across the 9 AM – 9 PM ET window (12 hours)
@@ -285,7 +292,7 @@ def execute_pending_sends():
                 campaign = first_send.campaign
 
                 last_initial = constituent.last_name[0] if constituent.last_name else ""
-                riding = constituent.riding or ""
+                riding = constituent.riding or constituent.city or ""
 
                 # Use the first stakeholder's info for generating the body
                 # (body is written generically, greeting gets swapped per recipient)
