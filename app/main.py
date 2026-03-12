@@ -45,11 +45,13 @@ async def lifespan(app: FastAPI):
     logger.info("Migrations done, setting up scheduler...")
 
     # Schedule daily sends at 8:55 AM ET
+    # misfire_grace_time=3600 ensures the job still runs if the app was down at 8:55
     scheduler.add_job(
         schedule_daily_sends,
         CronTrigger(hour=8, minute=55, timezone="America/Toronto"),
         id="schedule_daily_sends",
         replace_existing=True,
+        misfire_grace_time=3600,
     )
 
     # Execute pending sends every 5 minutes
@@ -59,6 +61,7 @@ async def lifespan(app: FastAPI):
         minutes=5,
         id="execute_pending_sends",
         replace_existing=True,
+        misfire_grace_time=300,
     )
 
     # Daily summary at 5 PM ET
@@ -67,10 +70,24 @@ async def lifespan(app: FastAPI):
         CronTrigger(hour=17, minute=0, timezone="America/Toronto"),
         id="daily_summary",
         replace_existing=True,
+        misfire_grace_time=3600,
     )
 
     scheduler.start()
     logger.info("APScheduler started with 3 jobs")
+
+    # Catch-up: run schedule_daily_sends on startup in case the 8:55 AM job was missed
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    now_et = datetime.now(ZoneInfo("America/Toronto"))
+    if now_et.hour >= 9:
+        logger.info("Running catch-up schedule_daily_sends (app started after 9 AM ET)...")
+        try:
+            schedule_daily_sends()
+            logger.info("Catch-up scheduling complete")
+        except Exception:
+            logger.exception("Catch-up scheduling failed")
+
     logger.info("Lifespan startup complete")
     yield
     scheduler.shutdown()
