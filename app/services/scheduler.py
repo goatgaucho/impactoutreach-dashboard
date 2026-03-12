@@ -67,7 +67,7 @@ def schedule_daily_sends():
     db: Session = SessionLocal()
 
     try:
-        today = date.today()
+        today = datetime.now(ET).date()
         campaigns = db.query(Campaign).filter(
             Campaign.status == "active",
             Campaign.start_date <= today,
@@ -230,7 +230,7 @@ def execute_pending_sends():
 
     try:
         now = datetime.now(ET)
-        today = date.today()
+        today = now.date()
 
         sends = db.query(Send).filter(
             Send.status == "scheduled",
@@ -322,7 +322,7 @@ def daily_summary():
     db: Session = SessionLocal()
 
     try:
-        today = date.today()
+        today = datetime.now(ET).date()
         campaigns = db.query(Campaign).filter(Campaign.status == "active").all()
 
         for campaign in campaigns:
