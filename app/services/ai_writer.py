@@ -110,6 +110,127 @@ def _weighted_choice(options: list[dict]) -> dict:
     return random.choices(options, weights=weights, k=1)[0]
 
 
+# Common first names for gender inference (not exhaustive, but covers most cases)
+FEMALE_NAMES = {
+    "abigail", "alison", "amanda", "amber", "amy", "andrea", "angela", "anna",
+    "anne", "ashley", "barb", "barbara", "beth", "bonnie", "brenda", "caitlin",
+    "carol", "caroline", "catherine", "celine", "charlene", "charlotte",
+    "cheryl", "christine", "cindy", "claire", "colleen", "courtney", "crystal",
+    "dana", "dawn", "debbie", "deborah", "denise", "diana", "diane", "donna",
+    "dorothy", "eileen", "elizabeth", "emily", "emma", "erin", "fatima",
+    "fiona", "frances", "grace", "heather", "helen", "iryna", "isabel",
+    "jackie", "jaeda", "jane", "janet", "jasmine", "jennifer", "jessica",
+    "jill", "joanne", "julie", "karen", "kate", "katherine", "katie", "kayla",
+    "kelley", "kelly", "kimberly", "laura", "lauren", "leanne", "linda",
+    "lindsay", "lisa", "lori", "lynn", "mai", "margaret", "maria", "marie",
+    "marjorie", "mary", "megan", "melissa", "michelle", "monica", "nancy",
+    "natalie", "nicole", "olena", "olivia", "pam", "pamela", "patricia",
+    "pauline", "priya", "rachel", "rebecca", "renee", "robin", "rosa", "ruth",
+    "sandra", "sarah", "sharon", "sherry", "sophie", "stacey", "stephanie",
+    "susan", "tammy", "tanya", "tara", "teresa", "theresa", "tina", "tracy",
+    "valerie", "vanessa", "victoria", "wendy", "ying", "asha", "phuong",
+    "linh",
+}
+
+MALE_NAMES = {
+    "aaron", "abdi", "adam", "ahmed", "alan", "alex", "andrew", "anthony",
+    "balwinder", "ben", "benjamin", "bill", "brad", "brandon", "brent",
+    "brett", "brian", "bruce", "carlo", "chad", "charles", "chris",
+    "christopher", "craig", "curtis", "dale", "daniel", "darren", "dave",
+    "david", "dean", "derek", "diego", "donald", "doug", "douglas", "dustin",
+    "earl", "ed", "edward", "eric", "frank", "gary", "george", "glen",
+    "gordon", "grant", "greg", "gregory", "gurpreet", "hai", "harpreet",
+    "jack", "james", "jason", "jeff", "jeffrey", "jerome", "jim", "joe",
+    "john", "jonathan", "jordan", "joseph", "josh", "joshua", "jun", "justin",
+    "keith", "ken", "kenneth", "kevin", "kyle", "larry", "lee", "mark",
+    "martin", "matt", "matthew", "michael", "mike", "mohammed", "nathan",
+    "neil", "nick", "patrick", "paul", "peter", "phil", "philip", "rajvir",
+    "mandeep", "amrit", "randy", "ray", "richard", "rick", "rob", "robert",
+    "roger", "ron", "russell", "ryan", "samuel", "scott", "sean", "shane",
+    "steve", "steven", "thomas", "tim", "timothy", "todd", "tom", "tony",
+    "travis", "trevor", "troy", "tyler", "wade", "wayne", "wei",
+    "william",
+}
+
+
+def _infer_gender(first_name: str) -> str:
+    """Infer likely gender from first name. Returns 'male', 'female', or 'unknown'."""
+    name = first_name.strip().lower()
+    if name in FEMALE_NAMES:
+        return "female"
+    if name in MALE_NAMES:
+        return "male"
+    return "unknown"
+
+
+def _is_actual_minister(title: str) -> bool:
+    """Check if the title indicates the person IS a minister (not just an advisor to one)."""
+    t = (title or "").strip().lower()
+    # "Minister of X" or "Minister for X" = actual minister
+    # "Advisor to the Minister" or "Regional Advisor to the Minister" = NOT a minister
+    if not t:
+        return False
+    return t.startswith("minister")
+
+
+def _is_mp(title: str) -> bool:
+    """Check if the title indicates the person is an MP."""
+    t = (title or "").strip().lower()
+    return "member of parliament" in t or t == "mp" or t.startswith("mp ")
+
+
+def build_greeting(recipient_name: str, recipient_title: str) -> str:
+    """Build an appropriate greeting based on name, title, and inferred gender."""
+    recipient_first = recipient_name.split()[0] if recipient_name else recipient_name
+    recipient_last = recipient_name.split()[-1] if recipient_name else recipient_name
+    gender = _infer_gender(recipient_first)
+
+    # Determine honorific based on gender
+    if gender == "female":
+        honorific = "Ms."
+    elif gender == "male":
+        honorific = "Mr."
+    else:
+        honorific = None  # Skip Mr./Ms. if we can't tell
+
+    # Base greeting options using first name or full name
+    greeting_options = [
+        f"Hi {recipient_name},",
+        f"Hey {recipient_name},",
+        f"Dear {recipient_name},",
+        f"To {recipient_name},",
+        f"{recipient_name},",
+        f"Hello {recipient_name},",
+        f"Hello,",
+    ]
+
+    # Add honorific options only if we know the gender
+    if honorific:
+        greeting_options += [
+            f"Dear {honorific} {recipient_last},",
+            f"{honorific} {recipient_last},",
+            f"Hi {honorific} {recipient_last},",
+        ]
+
+    # Add title-based options only if they actually hold that title
+    if _is_actual_minister(recipient_title):
+        greeting_options += [
+            f"Dear Minister {recipient_last},",
+            f"To Minister {recipient_last},",
+            f"Hi Minister {recipient_last},",
+            f"Minister {recipient_last},",
+        ]
+    elif _is_mp(recipient_title):
+        greeting_options += [
+            f"Dear MP {recipient_last},",
+            f"To MP {recipient_last},",
+            f"Hi MP {recipient_last},",
+            f"MP {recipient_last},",
+        ]
+
+    return random.choice(greeting_options)
+
+
 def generate_email_body(
     first_name: str,
     last_initial: str,
@@ -142,41 +263,7 @@ def generate_email_body(
     if polish["instruction"]:
         polish_instruction = f"\nIMPERFECTIONS: {polish['instruction']}\n"
 
-    # Build greeting instruction based on recipient title
-    title_lower = (recipient_title or "").lower()
-    recipient_last = recipient_name.split()[-1] if recipient_name else recipient_name
-    # Base greetings everyone gets
-    greeting_options = [
-        f"Dear {recipient_name},",
-        f"To {recipient_name},",
-        f"Hi {recipient_name},",
-        f"Hey {recipient_name},",
-        f"{recipient_name},",
-        f"Hello {recipient_name},",
-        f"Hello,",
-        f"Dear Mr. {recipient_last},",
-        f"Dear Mrs. {recipient_last},",
-        f"Mr. {recipient_last},",
-        f"Mrs. {recipient_last},",
-        f"Hi Mr. {recipient_last},",
-        f"Hi Mrs. {recipient_last},",
-    ]
-    # Sometimes use the title for ministers/MPs, but not always
-    if "minister" in title_lower:
-        greeting_options += [
-            f"Dear Minister {recipient_last},",
-            f"To Minister {recipient_last},",
-            f"Hi Minister {recipient_last},",
-            f"Minister {recipient_last},",
-        ]
-    elif "mp" in title_lower or "member of parliament" in title_lower:
-        greeting_options += [
-            f"Dear MP {recipient_last},",
-            f"To MP {recipient_last},",
-            f"Hi MP {recipient_last},",
-            f"MP {recipient_last},",
-        ]
-    greeting = random.choice(greeting_options)
+    greeting = build_greeting(recipient_name, recipient_title)
 
     system_prompt = f"""You are writing an email from a real person to their elected representative.
 
