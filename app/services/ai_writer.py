@@ -189,7 +189,7 @@ def generate_subject_line(
     campaign_name: str,
     constituent_name: str = "",
 ) -> str:
-    """Generate a consistent subject line: '<Constituent Name> Feedback for <Campaign Name>'."""
-    subject = f"{constituent_name} Feedback for {campaign_name}"
+    """Generate a consistent subject line: '<Name> | <Campaign Name> Campaign'."""
+    subject = f"{constituent_name} | {campaign_name} Campaign"
     logger.info(f"Generated subject: {subject}")
     return subject
