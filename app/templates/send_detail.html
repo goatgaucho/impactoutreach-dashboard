@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Email Detail - ImpactOutreach Admin{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="/campaigns/{{ campaign.id }}/sends" class="text-indigo-600 text-sm font-medium hover:text-indigo-700 flex items-center gap-1 mb-4">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Back to All Sends
+    </a>
+    <div class="flex items-center gap-3">
+        <h1 class="text-2xl font-bold text-slate-950 tracking-tight">Email Detail</h1>
+        <span class="badge badge-{{ send.status }}">{{ send.status }}</span>
+    </div>
+</div>
+
+<!-- Email metadata -->
+<div class="card p-6 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div>
+            <span class="text-slate-400 font-medium">From</span>
+            <div class="text-slate-950 font-medium mt-0.5">{{ send.from_display_name }}</div>
+            <div class="text-xs text-slate-400 font-mono">{{ send.from_address }}</div>
+        </div>
+        <div>
+            <span class="text-slate-400 font-medium">To</span>
+            <div class="text-slate-950 font-medium mt-0.5">{{ send.recipient_name }}</div>
+            <div class="text-xs text-slate-400 font-mono">{{ send.recipient_email }}</div>
+        </div>
+        <div>
+            <span class="text-slate-400 font-medium">Subject</span>
+            <div class="text-slate-950 mt-0.5">{{ send.subject or 'No subject' }}</div>
+        </div>
+        <div>
+            <span class="text-slate-400 font-medium">Timing</span>
+            <div class="text-slate-950 mt-0.5">
+                {% if send.sent_at %}
+                Sent {{ send.sent_at.strftime('%b %d, %Y at %I:%M %p') }}
+                {% elif send.scheduled_time %}
+                Scheduled for {{ send.scheduled_time.strftime('%b %d, %Y at %I:%M %p') }}
+                {% else %}
+                Pending
+                {% endif %}
+            </div>
+        </div>
+        {% if send.mailgun_message_id %}
+        <div class="md:col-span-2">
+            <span class="text-slate-400 font-medium">Mailgun ID</span>
+            <div class="text-xs text-slate-400 font-mono mt-0.5 break-all">{{ send.mailgun_message_id }}</div>
+        </div>
+        {% endif %}
+        {% if send.error_message %}
+        <div class="md:col-span-2">
+            <span class="text-red-500 font-medium">Error</span>
+            <div class="text-sm text-red-600 mt-0.5">{{ send.error_message }}</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Email body -->
+<div class="card p-6">
+    <h2 class="text-base font-semibold text-slate-950 mb-4">Email Body</h2>
+    {% if send.body %}
+    <div class="bg-slate-50 rounded-xl p-6 border border-slate-100">
+        <p class="text-sm text-slate-700 whitespace-pre-line leading-relaxed" style="font-family: 'Inter', sans-serif;">{{ send.body }}</p>
+    </div>
+    {% else %}
+    <p class="text-slate-400 text-sm text-center py-6">No email body stored (email may not have been generated yet).</p>
+    {% endif %}
+</div>
+
+<!-- Navigation between sends -->
+<div class="flex justify-between mt-6">
+    {% if prev_send %}
+    <a href="/campaigns/{{ campaign.id }}/sends/{{ prev_send.id }}" class="btn-secondary text-sm">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Previous
+    </a>
+    {% else %}
+    <div></div>
+    {% endif %}
+    {% if next_send %}
+    <a href="/campaigns/{{ campaign.id }}/sends/{{ next_send.id }}" class="btn-secondary text-sm">
+        Next
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+    </a>
+    {% else %}
+    <div></div>
+    {% endif %}
+</div>
+{% endblock %}

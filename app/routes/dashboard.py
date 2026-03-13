@@ -212,6 +212,59 @@ def update_campaign(
     return RedirectResponse(url=f"/campaigns/{campaign_id}", status_code=303)
 
 
+@router.get("/campaigns/{campaign_id}/sends", response_class=HTMLResponse)
+def campaign_sends_list(request: Request, campaign_id: UUID, status: str = "", db: Session = Depends(get_db)):
+    redirect = auth_redirect_if_needed(request)
+    if redirect:
+        return redirect
+
+    campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+    if not campaign:
+        return RedirectResponse(url="/", status_code=303)
+
+    query = db.query(Send).filter(Send.campaign_id == campaign_id)
+    if status:
+        query = query.filter(Send.status == status)
+    sends = query.order_by(Send.created_at.desc()).all()
+
+    return templates.TemplateResponse("sends_list.html", {
+        "request": request,
+        "campaign": campaign,
+        "sends": sends,
+        "current_status": status,
+    })
+
+
+@router.get("/campaigns/{campaign_id}/sends/{send_id}", response_class=HTMLResponse)
+def send_detail(request: Request, campaign_id: UUID, send_id: UUID, db: Session = Depends(get_db)):
+    redirect = auth_redirect_if_needed(request)
+    if redirect:
+        return redirect
+
+    campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+    if not campaign:
+        return RedirectResponse(url="/", status_code=303)
+
+    send = db.query(Send).filter(Send.id == send_id, Send.campaign_id == campaign_id).first()
+    if not send:
+        return RedirectResponse(url=f"/campaigns/{campaign_id}/sends", status_code=303)
+
+    # Get prev/next for navigation
+    all_sends = db.query(Send).filter(Send.campaign_id == campaign_id).order_by(Send.created_at.desc()).all()
+    send_ids = [s.id for s in all_sends]
+    current_idx = send_ids.index(send_id) if send_id in send_ids else -1
+    prev_send = all_sends[current_idx - 1] if current_idx > 0 else None
+    next_send = all_sends[current_idx + 1] if current_idx < len(all_sends) - 1 else None
+
+    return templates.TemplateResponse("send_detail.html", {
+        "request": request,
+        "campaign": campaign,
+        "send": send,
+        "prev_send": prev_send,
+        "next_send": next_send,
+    })
+
+
 @router.post("/campaigns/{campaign_id}/activate")
 def activate_campaign(request: Request, campaign_id: UUID, db: Session = Depends(get_db)):
     redirect = auth_redirect_if_needed(request)

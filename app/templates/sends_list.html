@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Sends - {{ campaign.name }} - ImpactOutreach Admin{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="/campaigns/{{ campaign.id }}" class="text-indigo-600 text-sm font-medium hover:text-indigo-700 flex items-center gap-1 mb-4">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Back to {{ campaign.name }}
+    </a>
+    <h1 class="text-2xl font-bold text-slate-950 tracking-tight">All Sends ({{ sends | length }})</h1>
+    <p class="text-slate-500 text-sm mt-1">{{ campaign.name }}</p>
+</div>
+
+<!-- Filter tabs -->
+<div class="flex gap-2 mb-6 flex-wrap">
+    <a href="?status=" class="badge {% if not current_status %}badge-active{% else %}badge-draft{% endif %} cursor-pointer" style="padding: 0.375rem 1rem; font-size: 0.8125rem;">All</a>
+    <a href="?status=sent" class="badge {% if current_status == 'sent' %}badge-active{% else %}badge-draft{% endif %} cursor-pointer" style="padding: 0.375rem 1rem; font-size: 0.8125rem;">Sent</a>
+    <a href="?status=scheduled" class="badge {% if current_status == 'scheduled' %}badge-scheduled{% else %}badge-draft{% endif %} cursor-pointer" style="padding: 0.375rem 1rem; font-size: 0.8125rem;">Scheduled</a>
+    <a href="?status=pending" class="badge {% if current_status == 'pending' %}badge-scheduled{% else %}badge-draft{% endif %} cursor-pointer" style="padding: 0.375rem 1rem; font-size: 0.8125rem;">Pending</a>
+    <a href="?status=bounced" class="badge {% if current_status == 'bounced' %}badge-bounced{% else %}badge-draft{% endif %} cursor-pointer" style="padding: 0.375rem 1rem; font-size: 0.8125rem;">Bounced</a>
+    <a href="?status=failed" class="badge {% if current_status == 'failed' %}badge-failed{% else %}badge-draft{% endif %} cursor-pointer" style="padding: 0.375rem 1rem; font-size: 0.8125rem;">Failed</a>
+</div>
+
+<div class="card p-6">
+    {% if sends %}
+    <div class="space-y-2">
+        {% for s in sends %}
+        <a href="/campaigns/{{ campaign.id }}/sends/{{ s.id }}" class="flex items-center justify-between p-4 rounded-xl bg-slate-50/60 border border-slate-100 hover:bg-indigo-50/40 hover:border-indigo-100 transition-colors cursor-pointer block">
+            <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-slate-950 truncate">{{ s.from_display_name }} &rarr; {{ s.recipient_name }}</div>
+                <div class="text-xs text-slate-500 mt-0.5 truncate">{{ s.subject or 'No subject' }}</div>
+                <div class="text-xs text-slate-400 mt-0.5">{{ s.recipient_email }}</div>
+            </div>
+            <div class="flex items-center gap-3 ml-4 shrink-0">
+                {% if s.sent_at %}
+                <span class="text-xs text-slate-400">{{ s.sent_at.strftime('%b %d %I:%M %p') }}</span>
+                {% elif s.scheduled_time %}
+                <span class="text-xs text-slate-400">{{ s.scheduled_time.strftime('%b %d %I:%M %p') }}</span>
+                {% endif %}
+                <span class="badge badge-{{ s.status }}">{{ s.status }}</span>
+                <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                </svg>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-slate-400 text-sm text-center py-8">No sends{% if current_status %} with status "{{ current_status }}"{% endif %}.</p>
+    {% endif %}
+</div>
+{% endblock %}
