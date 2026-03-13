@@ -145,33 +145,30 @@ def generate_email_body(
     # Build greeting instruction based on recipient title
     title_lower = (recipient_title or "").lower()
     recipient_last = recipient_name.split()[-1] if recipient_name else recipient_name
+    # Base greetings everyone gets
+    greeting_options = [
+        f"Dear {recipient_name},",
+        f"To {recipient_name},",
+        f"Hi {recipient_name},",
+        f"Hey {recipient_name},",
+        f"{recipient_name},",
+        f"Hello {recipient_name},",
+        f"Hello,",
+    ]
+    # Sometimes use the title for ministers/MPs, but not always
     if "minister" in title_lower:
-        greeting_options = [
+        greeting_options += [
             f"Dear Minister {recipient_last},",
             f"To Minister {recipient_last},",
             f"Hi Minister {recipient_last},",
             f"Minister {recipient_last},",
-            f"Dear {recipient_name},",
-            f"Hi {recipient_name},",
         ]
     elif "mp" in title_lower or "member of parliament" in title_lower:
-        greeting_options = [
+        greeting_options += [
             f"Dear MP {recipient_last},",
             f"To MP {recipient_last},",
             f"Hi MP {recipient_last},",
             f"MP {recipient_last},",
-            f"Dear {recipient_name},",
-            f"Hi {recipient_name},",
-        ]
-    else:
-        greeting_options = [
-            f"Dear {recipient_name},",
-            f"To {recipient_name},",
-            f"Hi {recipient_name},",
-            f"Hey {recipient_name},",
-            f"{recipient_name},",
-            f"Hello {recipient_name},",
-            f"Hello,",
         ]
     greeting = random.choice(greeting_options)
 
