@@ -69,12 +69,14 @@ OPENING_INSTRUCTIONS = [
 ]
 
 CLOSING_STYLES = [
-    "End with a short line about what you hope to see.",
-    "Close by reiterating your main point in one sentence.",
-    "End with a simple thanks.",
-    "Close with a specific ask — what do you want them to do?",
-    "Just sign off naturally, no big closing statement needed.",
-    "End with why this matters to your family or community.",
+    "End with a simple thanks and your name.",
+    "Just stop after your last point. Sign your name.",
+    "End with a question, then sign off.",
+    "Trail off with something like 'anyway, just wanted to say something' then your name.",
+    "End with a short ask, then 'thanks' and your name.",
+    "Just sign off with your name, no closing statement.",
+    "End with 'appreciate your time' or similar, then name.",
+    "Last sentence is about what you hope happens, then just your name.",
 ]
 
 # ~20% of emails should have imperfections (typos, missing caps, etc.)
@@ -140,6 +142,39 @@ def generate_email_body(
     if polish["instruction"]:
         polish_instruction = f"\nIMPERFECTIONS: {polish['instruction']}\n"
 
+    # Build greeting instruction based on recipient title
+    title_lower = (recipient_title or "").lower()
+    recipient_last = recipient_name.split()[-1] if recipient_name else recipient_name
+    if "minister" in title_lower:
+        greeting_options = [
+            f"Dear Minister {recipient_last},",
+            f"To Minister {recipient_last},",
+            f"Hi Minister {recipient_last},",
+            f"Minister {recipient_last},",
+            f"Dear {recipient_name},",
+            f"Hi {recipient_name},",
+        ]
+    elif "mp" in title_lower or "member of parliament" in title_lower:
+        greeting_options = [
+            f"Dear MP {recipient_last},",
+            f"To MP {recipient_last},",
+            f"Hi MP {recipient_last},",
+            f"MP {recipient_last},",
+            f"Dear {recipient_name},",
+            f"Hi {recipient_name},",
+        ]
+    else:
+        greeting_options = [
+            f"Dear {recipient_name},",
+            f"To {recipient_name},",
+            f"Hi {recipient_name},",
+            f"Hey {recipient_name},",
+            f"{recipient_name},",
+            f"Hello {recipient_name},",
+            f"Hello,",
+        ]
+    greeting = random.choice(greeting_options)
+
     system_prompt = f"""You are writing an email from a real person to their elected representative.
 
 The person is: {first_name} {last_initial}., from {city} ({riding}).
@@ -156,12 +191,18 @@ STRUCTURE:
 - {opening}
 - {closing}
 
+GREETING: Start the email with exactly this greeting: {greeting}
+
 CRITICAL RULES:
-- Do NOT start with "I hope this message finds you well" or any variation.
-- Do NOT use generic openings like "I am writing to express my concern."
-- Do NOT write long, multi-paragraph essays. Most people write SHORT emails.
+- NEVER use: "I am writing to express my concern", "Furthermore", "Moreover", "Additionally", "It's worth noting", "It's important to understand", "In conclusion", "delve", "landscape", "nuanced", "invaluable", "shed light", "groundbreaking", "endeavor".
+- NEVER use em dashes (—). Real people use commas, periods, or just mash two thoughts together with "and".
+- NEVER use "It's not about X, it's about Y" constructions.
+- NEVER use "Whether you're A, B, or C..." patterns or repeated rule-of-three lists.
+- NO bullet points, headers, bold text, or any formatting. It's an email, not a report.
+- NO tidy recap or closing summary. Some emails just stop. Some end with "thanks" or just a name. Some trail off with a question.
+- Emotion comes through word choice. People say "this is ridiculous" not "I am deeply troubled."
+- Vary sentence length. Some short. Some that go on a bit longer than they probably should because the person is mid-thought and just keeps typing.
 - This must read like a real person typed it, not a polished template.
-- The greeting should fit the tone — "Dear {recipient_name}," or "Hello," or "Hi," or just the name, or even no greeting at all.
 - Keep it natural. Real emails are often short, imperfect, and to the point.
 
 Sign off as: {display_name}, {city}
