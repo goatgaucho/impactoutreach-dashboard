@@ -6,8 +6,8 @@ Create Date: 2026-03-12
 """
 from alembic import op
 
-revision = "002"
-down_revision = "001"
+revision = "002_unique_send_constraint"
+down_revision = "001_initial"
 branch_labels = None
 depends_on = None
 
