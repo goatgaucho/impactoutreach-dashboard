@@ -154,6 +154,12 @@ def generate_email_body(
         f"{recipient_name},",
         f"Hello {recipient_name},",
         f"Hello,",
+        f"Dear Mr. {recipient_last},",
+        f"Dear Mrs. {recipient_last},",
+        f"Mr. {recipient_last},",
+        f"Mrs. {recipient_last},",
+        f"Hi Mr. {recipient_last},",
+        f"Hi Mrs. {recipient_last},",
     ]
     # Sometimes use the title for ministers/MPs, but not always
     if "minister" in title_lower:
