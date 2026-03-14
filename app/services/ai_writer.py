@@ -310,6 +310,13 @@ Output ONLY the email body. No headers, subject lines, or metadata."""
     )
 
     body = response.choices[0].message.content.strip()
+
+    # Hard post-processing: remove em dashes no matter what GPT outputs
+    body = body.replace("\u2014", ",")   # em dash
+    body = body.replace("\u2013", ",")   # en dash
+    body = body.replace(" ,", ",")       # clean up double spaces before comma
+    body = body.replace(",,", ",")       # clean up double commas
+
     logger.info(f"Generated email for {first_name} {last_initial}. (style={style['formality']}, polish={polish['level']}, {len(body)} chars)")
     return body
 
