@@ -1,6 +1,7 @@
 import json
 from datetime import date, datetime
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -14,6 +15,20 @@ from app.auth import auth_redirect_if_needed
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+
+ET = ZoneInfo("America/Toronto")
+
+
+def _to_et(dt):
+    """Convert a datetime to Eastern Time for display."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+    return dt.astimezone(ET)
+
+
+templates.env.filters["to_et"] = _to_et
 
 
 @router.get("/", response_class=HTMLResponse)

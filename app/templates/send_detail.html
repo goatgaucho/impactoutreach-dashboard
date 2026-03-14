@@ -36,9 +36,9 @@
             <span class="text-slate-400 font-medium">Timing</span>
             <div class="text-slate-950 mt-0.5">
                 {% if send.sent_at %}
-                Sent {{ send.sent_at.strftime('%b %d, %Y at %I:%M %p') }}
+                Sent {{ (send.sent_at|to_et).strftime('%b %d, %Y at %I:%M %p') }} ET
                 {% elif send.scheduled_time %}
-                Scheduled for {{ send.scheduled_time.strftime('%b %d, %Y at %I:%M %p') }}
+                Scheduled for {{ (send.scheduled_time|to_et).strftime('%b %d, %Y at %I:%M %p') }} ET
                 {% else %}
                 Pending
                 {% endif %}

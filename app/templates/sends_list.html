@@ -35,9 +35,9 @@
             </div>
             <div class="flex items-center gap-3 ml-4 shrink-0">
                 {% if s.sent_at %}
-                <span class="text-xs text-slate-400">{{ s.sent_at.strftime('%b %d %I:%M %p') }}</span>
+                <span class="text-xs text-slate-400">{{ (s.sent_at|to_et).strftime('%b %d %I:%M %p') }} ET</span>
                 {% elif s.scheduled_time %}
-                <span class="text-xs text-slate-400">{{ s.scheduled_time.strftime('%b %d %I:%M %p') }}</span>
+                <span class="text-xs text-slate-400">{{ (s.scheduled_time|to_et).strftime('%b %d %I:%M %p') }} ET</span>
                 {% endif %}
                 <span class="badge badge-{{ s.status }}">{{ s.status }}</span>
                 <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
